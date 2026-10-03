@@ -1,0 +1,132 @@
+[
+  {
+    "rule_id": "R001",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "SavingsAccountSK",
+    "description": "Mandatory surrogate key SavingsAccountSK must not be NULL.",
+    "category": "Completeness",
+    "severity": "Critical",
+    "origin": "Documented",
+    "rule_sql": "SELECT * FROM pres.FactSavingsAccount WHERE SavingsAccountSK IS NULL"
+  },
+  {
+    "rule_id": "R002",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "AccountNumber",
+    "description": "Mandatory natural key AccountNumber must not be NULL.",
+    "category": "Completeness",
+    "severity": "Critical",
+    "origin": "Documented",
+    "rule_sql": "SELECT * FROM pres.FactSavingsAccount WHERE AccountNumber IS NULL"
+  },
+  {
+    "rule_id": "R003",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "DateSK",
+    "description": "Mandatory DateSK must not be NULL.",
+    "category": "Completeness",
+    "severity": "Critical",
+    "origin": "Documented",
+    "rule_sql": "SELECT * FROM pres.FactSavingsAccount WHERE DateSK IS NULL"
+  },
+  {
+    "rule_id": "R004",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "LoadDate",
+    "description": "Mandatory LoadDate must not be NULL (every fact row must have ETL load timestamp).",
+    "category": "Load metadata",
+    "severity": "Critical",
+    "origin": "Documented",
+    "rule_sql": "SELECT * FROM pres.FactSavingsAccount WHERE LoadDate IS NULL"
+  },
+  {
+    "rule_id": "R005",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "Balance",
+    "description": "Mandatory Balance must not be NULL.",
+    "category": "Completeness",
+    "severity": "Critical",
+    "origin": "Documented",
+    "rule_sql": "SELECT * FROM pres.FactSavingsAccount WHERE Balance IS NULL"
+  },
+  {
+    "rule_id": "R006",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "SavingsAccountSK",
+    "description": "Surrogate key SavingsAccountSK must be unique in the fact (no duplicate PK values).",
+    "category": "Business-key duplicates",
+    "severity": "Critical",
+    "origin": "Documented",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN (SELECT SavingsAccountSK FROM pres.FactSavingsAccount WHERE SavingsAccountSK IS NOT NULL GROUP BY SavingsAccountSK HAVING COUNT(*)>1) dup ON f.SavingsAccountSK = dup.SavingsAccountSK"
+  },
+  {
+    "rule_id": "R007",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "SavingsAccountSK",
+    "description": "Referential integrity: SavingsAccountSK must exist in pres.DimSavingsAccount.",
+    "category": "Referential integrity",
+    "severity": "High",
+    "origin": "Documented",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f LEFT JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE f.SavingsAccountSK IS NOT NULL AND d.SavingsAccountSK IS NULL"
+  },
+  {
+    "rule_id": "R008",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "DateSK",
+    "description": "Referential integrity: DateSK must reference an existing pres.DimDate.DateSK.",
+    "category": "Referential integrity",
+    "severity": "High",
+    "origin": "Documented",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f LEFT JOIN pres.DimDate d ON f.DateSK = d.DateSK WHERE f.DateSK IS NOT NULL AND d.DateSK IS NULL"
+  },
+  {
+    "rule_id": "R009",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "DateSK",
+    "description": "DateSK should follow YYYYMMDD integer convention (must be an 8-digit positive integer between 19000101 and 99991231).",
+    "category": "Domain & format",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM pres.FactSavingsAccount WHERE DateSK IS NOT NULL AND (DateSK < 19000101 OR DateSK > 99991231)"
+  },
+  {
+    "rule_id": "R010",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": null,
+    "description": "Business rule: Balance must be 0.00 when the account status in pres.DimSavingsAccount is 'Closed'.",
+    "category": "Conditional business rule",
+    "severity": "High",
+    "origin": "Documented",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE d.AccountStatus = 'CLOSED' AND (f.Balance IS NULL OR f.Balance <> 0.00)"
+  },
+  {
+    "rule_id": "R011",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "InterestRate",
+    "description": "When InterestRate is present it should be non-negative (rates cannot be negative unless product allows negative interest).",
+    "category": "Domain & format",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM pres.FactSavingsAccount WHERE InterestRate IS NOT NULL AND InterestRate < 0"
+  },
+  {
+    "rule_id": "R012",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "AccountNumber",
+    "description": "AccountNumber in fact should match AccountNumber in referenced pres.DimSavingsAccount for the same SavingsAccountSK (consistency between fact and dimension).",
+    "category": "Referential integrity",
+    "severity": "High",
+    "origin": "Inferred",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE f.AccountNumber IS NOT NULL AND d.AccountNumber IS NOT NULL AND f.AccountNumber <> d.AccountNumber"
+  },
+  {
+    "rule_id": "R013",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": null,
+    "description": "Multiple snapshot rows for the same SavingsAccountSK and DateSK (duplicate fact snapshot for same business date) are not allowed.",
+    "category": "Business-key duplicates",
+    "severity": "High",
+    "origin": "Inferred",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN (SELECT SavingsAccountSK, DateSK FROM pres.FactSavingsAccount WHERE SavingsAccountSK IS NOT NULL AND DateSK IS NOT NULL GROUP BY SavingsAccountSK, DateSK HAVING COUNT(*)>1) dup ON f.SavingsAccountSK = dup.SavingsAccountSK AND f.DateSK = dup.DateSK"
+  }
+]
