@@ -18,6 +18,7 @@ def call_agent(name: str, version: str, message: str) -> str:
     response = openai_client.responses.create(
         input=[{"role": "user", "content": message}],
         extra_body={"agent_reference": {"name": name, "version": version, "type": "agent_reference"}},
+        timeout=150,
     )
     return response.output_text
 

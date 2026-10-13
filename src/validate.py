@@ -80,3 +80,55 @@ def validate_dictionary_csv(csv_text: str, expected_table: str,
         errors.append(f"Columns not in the table: {sorted(extra)}")
 
     return errors
+
+FIELDS = EXPECTED_HEADER   # same 12 names, same order
+
+
+def validate_dictionary_rows(rows, expected_table, expected_columns, known_columns) -> list[str]:
+    """Validate the agent's JSON rows. Empty list = valid."""
+    if not isinstance(rows, list):
+        return ["Output must be a JSON array of objects"]
+    errors, seen = [], []
+    for i, r in enumerate(rows, start=1):
+        if not isinstance(r, dict):
+            errors.append(f"Item {i}: not a JSON object")
+            continue
+        col = r.get("column_name", f"item {i}")
+        seen.append(col)
+        missing = [f for f in FIELDS if f not in r]
+        extra = [k for k in r if k not in FIELDS]
+        if missing:
+            errors.append(f"{col}: missing keys {missing}")
+        if extra:
+            errors.append(f"{col}: unexpected keys {extra}")
+        if r.get("table_name") != expected_table:
+            errors.append(f"{col}: table_name must be '{expected_table}'")
+        for f in ("mandatory", "is_business_key", "is_metadata"):
+            if r.get(f) not in ("Y", "N"):
+                errors.append(f"{col}: {f} must be 'Y' or 'N', got '{r.get(f)}'")
+        src_t, src_c = r.get("source_table") or "", r.get("source_column") or ""
+        if (src_t or src_c) and f"{src_t}.{src_c}".lower() not in known_columns:
+            errors.append(f"{col}: source '{src_t}.{src_c}' does not exist in Synapse")
+
+    missing_cols = set(expected_columns) - set(seen)
+    extra_cols = set(seen) - set(expected_columns)
+    if missing_cols:
+        errors.append(f"Missing columns: {sorted(missing_cols)}")
+    if extra_cols:
+        errors.append(f"Columns not in the table: {sorted(extra_cols)}")
+    return errors
+
+
+def rows_to_csv(rows) -> str:
+    """Write validated rows as a properly quoted CSV."""
+    buf = io.StringIO()
+    writer = csv.writer(buf, quoting=csv.QUOTE_ALL, lineterminator="\n")
+    writer.writerow(FIELDS)
+    for r in rows:
+        values = []
+        for f in FIELDS:
+            v = "" if r.get(f) is None else str(r.get(f))
+            v = CITATION.sub("", v).replace("\n", " ").replace("≥", ">=").replace("≤", "<=")
+            values.append(v)
+        writer.writerow(values)
+    return buf.getvalue()

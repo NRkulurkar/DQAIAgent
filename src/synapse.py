@@ -102,6 +102,40 @@ def get_known_columns(schema: str = "curate") -> set[str]:
             "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
             "WHERE TABLE_SCHEMA = ?", schema).fetchall()
     return {f"{r[0]}.{r[1]}.{r[2]}".lower() for r in rows}
+
+def fill_references() -> int:
+    """Link Fact/Bridge columns to the Dim whose surrogate key has the same name.
+    Returns the number of dictionary rows updated."""
+    with get_connection() as conn:
+        cur = conn.cursor()
+
+        # Each Dim's surrogate key = its first column, if it ends in SK
+        dim_keys = cur.execute("""
+            SELECT TABLE_SCHEMA + '.' + TABLE_NAME AS dim_table, COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = 'pres' AND TABLE_NAME LIKE 'Dim%'
+              AND ORDINAL_POSITION = 1 AND COLUMN_NAME LIKE '%SK'
+        """).fetchall()
+        key_to_dim = {r.COLUMN_NAME: r.dim_table for r in dim_keys}
+
+        # Clear old links, then set new ones (safe to rerun)
+        cur.execute("UPDATE dq.data_dictionary SET references_table = NULL, references_column = NULL")
+
+        updated = 0
+        rows = cur.execute("""
+            SELECT table_name, column_name FROM dq.data_dictionary
+            WHERE table_name NOT LIKE 'pres.Dim%' AND column_name LIKE '%SK'
+        """).fetchall()
+        for r in rows:
+            dim = key_to_dim.get(r.column_name)
+            if dim:
+                cur.execute("""
+                    UPDATE dq.data_dictionary
+                    SET references_table = ?, references_column = ?
+                    WHERE table_name = ? AND column_name = ?
+                """, dim, r.column_name, r.table_name, r.column_name)
+                updated += 1
+    return updated
     
 if __name__ == "__main__":
     print(get_columns("pres", "DimSavingsAccount"))
