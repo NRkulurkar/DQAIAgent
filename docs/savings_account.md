@@ -32,3 +32,29 @@ Curate layer (curate.SavingsAccount), then split into Presentation:
 - Curate keeps history using ValidFrom and ValidTo (9999-12-31 = current version).
 - DimSavingsAccount adds IsCurrent (1 = current version).
 - FactSavingsAccount LoadDate is taken from Curate ValidFrom; DateSK is the same date as yyyymmdd.
+
+
+## DimSavingsAccount columns
+
+| Column | Data type | Description |
+|---|---|---|
+| SavingsAccountSK | int | Unique key |
+| AccountNumber | varchar | SavingsAccount.AccountNumber |
+| CustomerID | varchar | SavingsAccount.CustomerID |
+| ProductCode | varchar | SavingsAccount.ProductCode |
+| AccountStatus | varchar | SavingsAccount.AccountStatus |
+| Currency | char | SavingsAccount.Currency |
+| AccountOpenDate | date | SavingsAccount.AccountOpenDate |
+| AccountMaturityDate | date | SavingsAccount.AccountMaturityDate |
+| AccountCloseDate | date | SavingsAccount.AccountCloseDate |
+
+## FactSavingsAccount columns
+
+| Column | Data type | Description |
+|---|---|---|
+| SavingsAccountSK | int | Unique key of DimSavingsAccount |
+| AccountNumber | varchar | SavingsAccount.AccountNumber |
+| DateSK | int | SavingsAccount.ValidFrom as yyyymmdd |
+| LoadDate | date | SavingsAccount.ValidFrom |
+| Balance | decimal | SavingsAccount.Balance |
+| InterestRate | decimal | SavingsAccount.InterestRate |

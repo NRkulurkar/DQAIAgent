@@ -1,6 +1,6 @@
 import os
 import sys
-from synapse import get_connection, get_columns, load_dictionary
+from synapse import get_connection, get_columns, load_dictionary, get_known_columns
 from Agents import call_agent, extract_code_block
 from validate import clean_csv, validate_dictionary_csv
 from storage import upload_text
@@ -24,6 +24,7 @@ def column_names(schema: str, table: str) -> list[str]:
 def build_dictionary(schema: str, table: str) -> int:
     full_name = f"{schema}.{table}"
     cols = column_names(schema, table)
+    known = get_known_columns("curate")
     if not cols:
         raise ValueError(f"{full_name} not found in Synapse")
 
@@ -36,7 +37,7 @@ def build_dictionary(schema: str, table: str) -> int:
         reply = call_agent("dictionary-builder", version, message)
         try:
             csv_text = clean_csv(extract_code_block(reply))
-            errors = validate_dictionary_csv(csv_text, full_name, cols)
+            errors = validate_dictionary_csv(csv_text, full_name, cols, known)
         except ValueError as e:
             errors = [str(e)]
 
@@ -45,6 +46,9 @@ def build_dictionary(schema: str, table: str) -> int:
             break
 
         print(f"  {len(errors)} problem(s), e.g. {errors[:2]}", flush=True)
+        with open(f"dictionary/_rejected_{schema}_{table}_attempt{attempt}.csv",
+            "w", encoding="utf-8") as f:
+            f.write(reply)
         # Send the problems back so the agent can correct its own output
         message = (base_message
                    + "\n\nYour previous CSV had these problems. Return the full corrected CSV:\n- "
