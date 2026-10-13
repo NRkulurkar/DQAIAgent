@@ -10,11 +10,19 @@ EXPECTED_HEADER = [
 
 CITATION = re.compile(r"\s*\[\[\d+\]\]")
 
+HEADER_LINE = ",".join(EXPECTED_HEADER)
+
 
 def clean_csv(csv_text: str) -> str:
-    """Remove citation markers like [[3]] and swap special symbols for ASCII."""
+    """Remove citation markers, swap special symbols for ASCII,
+    and add the header row if the agent left it out."""
     text = CITATION.sub("", csv_text)
-    return text.replace("≥", ">=").replace("≤", "<=")
+    text = text.replace("≥", ">=").replace("≤", "<=").strip()
+
+    first_line = text.splitlines()[0] if text else ""
+    if not first_line.replace('"', "").startswith("table_name"):
+        text = HEADER_LINE + "\n" + text
+    return text
 
 
 def validate_dictionary_csv(csv_text: str, expected_table: str, expected_columns: list[str]) -> list[str]:
@@ -27,8 +35,8 @@ def validate_dictionary_csv(csv_text: str, expected_table: str, expected_columns
 
     # 1. Header must match exactly
     if rows[0] != EXPECTED_HEADER:
-        errors.append(f"Header mismatch: {rows[0]}")
-
+        errors.append("The first line must be exactly this header: " + ",".join(EXPECTED_HEADER))
+        
     data = rows[1:]
     seen_columns = []
 

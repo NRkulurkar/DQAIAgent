@@ -28,6 +28,28 @@ def get_columns(schema: str, table: str) -> str:
         rows = conn.cursor().execute(sql, schema, table).fetchall()
     return ", ".join(f"{r.COLUMN_NAME} ({r.DATA_TYPE})" for r in rows)
 
+def load_dictionary(table_name: str, file_url: str) -> int:
+    """Replace one table's rows in dq.data_dictionary with the CSV at file_url.
+    Returns the number of rows loaded."""
+    with get_connection() as conn:
+        cur = conn.cursor()
+
+        # 1. Remove this table's old rows (so reloads never create duplicates)
+        cur.execute("DELETE FROM dq.data_dictionary WHERE table_name = ?", table_name)
+
+        # 2. Load the new file
+        cur.execute(f"""
+            COPY INTO dq.data_dictionary
+            FROM '{file_url}'
+            WITH (FILE_TYPE = 'CSV', FIRSTROW = 2, FIELDQUOTE = '"', ENCODING = 'UTF8',
+                  CREDENTIAL = (IDENTITY = 'Managed Identity'))
+        """)
+
+        # 3. Confirm what was loaded
+        count = cur.execute(
+            "SELECT COUNT(*) FROM dq.data_dictionary WHERE table_name = ?", table_name
+        ).fetchone()[0]
+    return count
 
 if __name__ == "__main__":
     print(get_columns("pres", "DimSavingsAccount"))
