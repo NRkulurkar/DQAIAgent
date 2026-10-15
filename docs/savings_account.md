@@ -6,7 +6,9 @@ Curate layer (curate.SavingsAccount), then split into Presentation:
 - pres.DimSavingsAccount – descriptive account details, SCD Type 2 history
 - pres.FactSavingsAccount – daily balance and interest rate per account version
 
-## Column definitions
+## curate.SavingsAccount columns (business definitions and rules)
+
+These business rules also apply to every Presentation column mapped from these columns (see the DimSavingsAccount and FactSavingsAccount sections).
 
 | Column | Meaning | Type | Mandatory | Business rules |
 |---|---|---|---|---|

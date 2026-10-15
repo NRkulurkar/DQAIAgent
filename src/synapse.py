@@ -1,6 +1,7 @@
 import os
 import pyodbc
 from dotenv import load_dotenv
+import re
 
 load_dotenv()
 
@@ -77,23 +78,61 @@ def get_dictionary_rows(table_name: str) -> str:
     return "\n".join(r[0] for r in rows)
 
 
-def load_rules(table_name: str, prefix: str, rules: list[dict]) -> int:
-    """Replace this table's Proposed rules in dq.rule_catalog. Returns rows loaded."""
+
+
+
+def _normalize(sql: str) -> str:
+    return re.sub(r"\s+", " ", sql.strip().lower())
+
+
+def get_approved_descriptions(table_name: str) -> list[str]:
+    with get_connection() as conn:
+        rows = conn.cursor().execute(
+            "SELECT description FROM dq.rule_catalog WHERE table_name = ? AND status = 'Approved'",
+            table_name).fetchall()
+    return [r[0] for r in rows]
+
+
+def load_rules(table_name: str, prefix: str, rules: list[dict]) -> tuple[int, int]:
+    """Replace this table's Proposed rules. Never touches Approved/Rejected rules.
+    Returns (rules loaded, rules skipped as duplicates of reviewed ones)."""
     with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM dq.rule_catalog WHERE table_name = ? AND status = 'Proposed'",
                     table_name)
+
+        # What's already been reviewed for this table
+        reviewed = cur.execute(
+            "SELECT rule_id, rule_sql FROM dq.rule_catalog WHERE table_name = ?",
+            table_name).fetchall()
+        reviewed_sql = {_normalize(r.rule_sql) for r in reviewed}
+
+        # New IDs continue after the highest existing number, so they never clash
+        numbers = [int(m.group(1)) for r in reviewed if (m := re.search(r"-R(\d+)$", r.rule_id))]
+        next_no = max(numbers, default=0) + 1
+
+        loaded = skipped = 0
         for r in rules:
+            if _normalize(r["rule_sql"]) in reviewed_sql:
+                skipped += 1
+                continue
             cur.execute("""
                 INSERT INTO dq.rule_catalog
                 (rule_id, table_name, column_name, description, category, severity,
                  origin, rule_sql, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Proposed', GETDATE())
-            """, prefix + r["rule_id"], r["table_name"], r.get("column_name"),
+                SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'Proposed', GETDATE()
+            """, f"{prefix}R{next_no:03d}", r["table_name"], r.get("column_name"),
                  r["description"], r["category"], r["severity"], r["origin"], r["rule_sql"])
-        return cur.execute(
-            "SELECT COUNT(*) FROM dq.rule_catalog WHERE table_name = ? AND status = 'Proposed'",
+            next_no += 1
+            loaded += 1
+    return loaded, skipped
+
+def has_reviewed_rules(table_name: str) -> bool:
+    with get_connection() as conn:
+        n = conn.cursor().execute(
+            "SELECT COUNT(*) FROM dq.rule_catalog WHERE table_name = ? AND status IN ('Approved', 'Rejected')",
             table_name).fetchone()[0]
+    return n > 0
 
 def get_known_columns(schema: str = "curate") -> set[str]:
     """All columns in a schema as lowercase 'schema.table.column' strings."""
@@ -136,6 +175,39 @@ def fill_references() -> int:
                 """, dim, r.column_name, r.table_name, r.column_name)
                 updated += 1
     return updated
+
+def get_dictionary_tables() -> list[str]:
+    """All tables that have dictionary rows."""
+    with get_connection() as conn:
+        rows = conn.cursor().execute(
+            "SELECT DISTINCT table_name FROM dq.data_dictionary").fetchall()
+    return sorted(r[0] for r in rows)
+
+
+def get_references(table_name: str) -> list[tuple]:
+    """(column, referenced table, referenced column) links for one table."""
+    with get_connection() as conn:
+        return conn.cursor().execute("""
+            SELECT column_name, references_table, references_column
+            FROM dq.data_dictionary
+            WHERE table_name = ? AND references_table IS NOT NULL
+        """, table_name).fetchall()
+
+def last_dictionary_hash(table_name: str) -> str | None:
+    with get_connection() as conn:
+        row = conn.cursor().execute("""
+            SELECT TOP 1 dictionary_hash FROM dq.rule_generation_log
+            WHERE table_name = ? ORDER BY generated_at DESC
+        """, table_name).fetchone()
+    return row[0] if row else None
+
+
+def log_generation(table_name: str, dictionary_hash: str) -> None:
+    with get_connection() as conn:
+        conn.cursor().execute("""
+            INSERT INTO dq.rule_generation_log (table_name, dictionary_hash, generated_at)
+            SELECT ?, ?, GETDATE()
+        """, table_name, dictionary_hash)
     
 if __name__ == "__main__":
     print(get_columns("pres", "DimSavingsAccount"))

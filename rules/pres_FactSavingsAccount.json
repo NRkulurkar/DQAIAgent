@@ -1,0 +1,62 @@
+[
+  {
+    "rule_id": "R001",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "Balance",
+    "description": "Balance must not be negative.",
+    "category": "Domain & format",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE f.Balance < 0"
+  },
+  {
+    "rule_id": "R002",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "DateSK, AccountOpenDate",
+    "description": "DateSK (fact) must be >= DimSavingsAccount.AccountOpenDate when AccountOpenDate is populated, and must be <= DimSavingsAccount.AccountCloseDate when AccountCloseDate is populated.",
+    "category": "Temporal & SCD",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE (d.AccountOpenDate IS NOT NULL AND f.DateSK < CONVERT(int, CONVERT(varchar(8), d.AccountOpenDate, 112))) OR (d.AccountCloseDate IS NOT NULL AND f.DateSK > CONVERT(int, CONVERT(varchar(8), d.AccountCloseDate, 112)))"
+  },
+  {
+    "rule_id": "R003",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "AccountNumber",
+    "description": "AccountNumber in the fact table must match the AccountNumber in the linked DimSavingsAccount row.",
+    "category": "Referential integrity",
+    "severity": "High",
+    "origin": "Documented",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE ISNULL(f.AccountNumber,'') <> ISNULL(d.AccountNumber,'')"
+  },
+  {
+    "rule_id": "R004",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "ProductCode, AccountMaturityDate",
+    "description": "When the linked DimSavingsAccount.ProductCode = 'FIXED_1Y', the DimSavingsAccount.AccountMaturityDate must be populated.",
+    "category": "Conditional business rule",
+    "severity": "Critical",
+    "origin": "Documented",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE d.ProductCode = 'FIXED_1Y' AND d.AccountMaturityDate IS NULL"
+  },
+  {
+    "rule_id": "R005",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "AccountStatus, AccountCloseDate, AccountOpenDate",
+    "description": "When the linked DimSavingsAccount.AccountStatus = 'CLOSED', DimSavingsAccount.AccountCloseDate must be populated and AccountCloseDate must be >= AccountOpenDate.",
+    "category": "Conditional business rule",
+    "severity": "High",
+    "origin": "Documented",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE d.AccountStatus = 'CLOSED' AND (d.AccountCloseDate IS NULL OR d.AccountOpenDate IS NULL OR d.AccountCloseDate < d.AccountOpenDate)"
+  },
+  {
+    "rule_id": "R006",
+    "table_name": "pres.FactSavingsAccount",
+    "column_name": "Currency",
+    "description": "Linked DimSavingsAccount.Currency must equal 'GBP'.",
+    "category": "Domain & format",
+    "severity": "High",
+    "origin": "Documented",
+    "rule_sql": "SELECT f.* FROM pres.FactSavingsAccount f JOIN pres.DimSavingsAccount d ON f.SavingsAccountSK = d.SavingsAccountSK WHERE ISNULL(d.Currency,'') <> 'GBP'"
+  }
+]

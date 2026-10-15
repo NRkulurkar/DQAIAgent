@@ -1,11 +1,11 @@
 import json
 import re
 
-ALLOWED_TABLES = {"curate.SavingsAccount", "pres.DimSavingsAccount", "pres.FactSavingsAccount"}
+
 CATEGORIES = {"Completeness", "Domain & format", "Business-key duplicates", "Referential integrity",
               "Temporal & SCD", "Load metadata", "Conditional business rule"}
 SEVERITIES = {"Critical", "High", "Warning"}
-ORIGINS = {"Documented", "Inferred"}
+ORIGINS = {"Documented", "Standard", "Inferred"}
 REQUIRED_KEYS = {"rule_id", "table_name", "description", "category", "severity", "origin", "rule_sql"}
 FORBIDDEN = re.compile(r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|MERGE|CREATE|EXEC|EXECUTE|GRANT)\b", re.I)
 TABLE_REF = re.compile(r"\b(curate|pres|dq)\.(\w+)", re.I)
@@ -19,7 +19,7 @@ def parse_rules(text: str) -> list[dict]:
     return rules
 
 
-def validate_rules(rules: list[dict], expected_table: str) -> list[str]:
+def validate_rules(rules: list[dict], expected_table: str, allowed_tables: list[str]) -> list[str]:
     """Return a list of problems. Empty list = all rules valid."""
     errors, seen_ids = [], set()
     for r in rules:
@@ -49,8 +49,9 @@ def validate_rules(rules: list[dict], expected_table: str) -> list[str]:
             errors.append(f"{rid}: rule_sql must not contain semicolons")
         if FORBIDDEN.search(sql):
             errors.append(f"{rid}: rule_sql contains a forbidden keyword")
+
+        allowed = {t.lower() for t in allowed_tables}
         for schema, table in TABLE_REF.findall(sql):
-            name = f"{schema.lower()}.{table}"
-            if name not in {t.lower().split('.')[0] + '.' + t.split('.')[1] for t in ALLOWED_TABLES}:
+            if f"{schema}.{table}".lower() not in allowed:
                 errors.append(f"{rid}: references unknown table '{schema}.{table}'")
     return errors

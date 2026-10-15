@@ -1,14 +1,14 @@
 metadata:
   logo: Avatar_Default.svg
   description: ""
-  modified_at: "1791919690"
+  modified_at: "1791981706"
   microsoft.voice-live.enabled: "false"
 object: agent.version
-id: dictionary-builder:12
+id: dictionary-builder:13
 name: dictionary-builder
-version: "12"
+version: "13"
 description: ""
-created_at: 1791919691
+created_at: 1791981706
 definition:
   kind: prompt
   model: gpt-5-mini
@@ -38,6 +38,12 @@ definition:
     - If a text detail is not documented and cannot be sensibly inferred, write NOT_FOUND.
     - Do not include citation markers like [[1]].
     - After the code block, list anything you were unsure about.
+
+    Search the knowledge base at least twice:
+    1. For the table's own column mappings (for example "DimSavingsAccount columns").
+    2. For the business rules of each source table (for example "curate.SavingsAccount business rules Mandatory when").
+    For every Presentation column mapped from a source column, copy the source column's business rules into documented_rules.
+    Use only content from the Savings Account documentation (savings_account.md). Ignore content describing other tables such as DimAccount, even if column names match.
   reasoning:
     effort: low
   tools:

@@ -1,0 +1,62 @@
+[
+  {
+    "rule_id": "R001",
+    "table_name": "pres.DimSavingsAccount",
+    "column_name": "Currency",
+    "description": "Currency must equal 'GBP' for all rows (documented business rule).",
+    "category": "Domain & format",
+    "severity": "Critical",
+    "origin": "Documented",
+    "rule_sql": "SELECT * FROM pres.DimSavingsAccount WHERE Currency IS NULL OR Currency <> 'GBP'"
+  },
+  {
+    "rule_id": "R002",
+    "table_name": "pres.DimSavingsAccount",
+    "column_name": "ValidFrom",
+    "description": "ValidFrom should not be in the future relative to the system time (inferred ETL rule).",
+    "category": "Temporal & SCD",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM pres.DimSavingsAccount WHERE ValidFrom > SYSUTCDATETIME()"
+  },
+  {
+    "rule_id": "R003",
+    "table_name": "pres.DimSavingsAccount",
+    "column_name": "IsCurrent,ValidFrom",
+    "description": "Rows marked IsCurrent = 1 should not have a ValidFrom in the future (current version starting in the future is suspicious).",
+    "category": "Temporal & SCD",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM pres.DimSavingsAccount WHERE IsCurrent = 1 AND ValidFrom > SYSUTCDATETIME()"
+  },
+  {
+    "rule_id": "R004",
+    "table_name": "pres.DimSavingsAccount",
+    "column_name": "ProductCode,AccountMaturityDate",
+    "description": "AccountMaturityDate is populated for rows where ProductCode is not 'FIXED_1Y' (typically maturity should only exist for fixed-term products).",
+    "category": "Conditional business rule",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM pres.DimSavingsAccount WHERE AccountMaturityDate IS NOT NULL AND ISNULL(ProductCode,'') <> 'FIXED_1Y'"
+  },
+  {
+    "rule_id": "R005",
+    "table_name": "pres.DimSavingsAccount",
+    "column_name": "AccountNumber",
+    "description": "AccountNumber must not be an empty string or whitespace (beyond being non-NULL).",
+    "category": "Domain & format",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM pres.DimSavingsAccount WHERE AccountNumber IS NOT NULL AND LTRIM(RTRIM(AccountNumber)) = ''"
+  },
+  {
+    "rule_id": "R006",
+    "table_name": "pres.DimSavingsAccount",
+    "column_name": "CustomerID",
+    "description": "CustomerID must not be an empty string or whitespace (beyond being non-NULL).",
+    "category": "Domain & format",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM pres.DimSavingsAccount WHERE CustomerID IS NOT NULL AND LTRIM(RTRIM(CustomerID)) = ''"
+  }
+]

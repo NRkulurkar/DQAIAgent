@@ -1,7 +1,7 @@
 from validate_rules import parse_rules, validate_rules
 from synapse import dry_run
 
-with open("docs/Dictionary/rules/DimSavingsAccount.json", encoding="utf-8") as f:
+with open("rules/DimSavingsAccount.json", encoding="utf-8") as f:
     rules = parse_rules(f.read())
 
 problems = validate_rules(rules, "pres.DimSavingsAccount")

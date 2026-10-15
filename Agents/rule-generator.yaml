@@ -1,14 +1,14 @@
 metadata:
   logo: Avatar_Default.svg
   description: ""
-  modified_at: "1791028790"
+  modified_at: "1792065179"
   microsoft.voice-live.enabled: "false"
 object: agent.version
-id: rule-generator:4
+id: rule-generator:7
 name: rule-generator
-version: "4"
+version: "7"
 description: ""
-created_at: 1791028791
+created_at: 1792065180
 definition:
   kind: prompt
   model: gpt-5-mini
@@ -52,7 +52,20 @@ definition:
     Table:<table_name>
     Dictionary rows (column_name | business_meaning | data_type | mandatory | expected_values | documented_rules | inferred_rules | is_business_key | is_metadata):
     <column_details>
-    Severity: rules from documented_rules or mandatory = Critical or High. Rules from inferred_rules = Warning.
+
+    "origin": "Documented, Standard or Inferred"
+
+    Origin and severity:
+    - Documented: the rule comes from documented_rules or mandatory. Severity Critical or High.
+    - Standard: universal data-warehouse checks (one current row per business key, no overlapping ValidFrom/ValidTo periods, no duplicate business keys, LoadDate not null, surrogate keys must exist in the referenced table). Severity Critical or High.
+    - Inferred: business rules NOT written in the documentation but logically expected (date order, value ranges, status-dependent fields). Severity always Warning.
+
+    - Curate tables have no IsCurrent column: the current version is the row with ValidTo = '9999-12-31'.
+    - If the user provides "Related tables", you may join to them using the given join, and use their dictionary rows for cross-table rules.
+
+    - "Related tables" are provided ONLY so you can join to them. Every rule must check the target table named in "Table:". Never write a rule that only checks a related table.
+    - table_name is always exactly the target table, never a list and never a related table.
+    - Only reference the target table and the related tables listed. Never invent other tables (for example DimDate).
   reasoning:
     effort: low
   tools:
