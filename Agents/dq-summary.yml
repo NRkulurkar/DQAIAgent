@@ -1,14 +1,14 @@
 metadata:
   logo: Avatar_Default.svg
   description: ""
-  modified_at: "1792069818"
+  modified_at: "1792082485"
   microsoft.voice-live.enabled: "false"
 object: agent.version
-id: dq-summary:2
+id: dq-summary:3
 name: dq-summary
-version: "2"
+version: "3"
 description: ""
-created_at: 1792069819
+created_at: 1792082486
 definition:
   kind: prompt
   model: gpt-5-mini
@@ -38,6 +38,8 @@ definition:
     - Use only the information given. Never invent tables, columns, numbers or causes.
     - Keep it under 300 words.
     - If nothing failed, say so in one sentence.
+
+    For each issue, name the table and the column (or say "table-level" if no single column applies).
   reasoning:
     effort: low
   tools:

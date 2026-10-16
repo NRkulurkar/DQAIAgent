@@ -20,7 +20,7 @@ def build_run_message(run_id: int) -> str:
             SELECT TOP 1 run_id, rules_run, rules_failed, rules_error
             FROM dq.run_log WHERE run_id < ? ORDER BY run_id DESC""", run_id).fetchone()
         rows = cur.execute("""
-            SELECT r.rule_id, r.table_name, r.category, r.severity, r.origin,
+            SELECT r.rule_id, r.table_name, c.column_name, r.category, r.severity, r.origin,
                    c.description, r.outcome, r.failed_rows, r.error_message
             FROM dq.results r
             JOIN dq.rule_catalog c ON c.rule_id = r.rule_id

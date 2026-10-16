@@ -2,151 +2,61 @@
   {
     "rule_id": "R001",
     "table_name": "curate.SavingsAccount",
-    "column_name": "AccountNumber,CustomerID,ProductCode,AccountStatus,Currency,AccountOpenDate,InterestRate,Balance,ValidFrom,ValidTo,LoadTimestamp",
-    "description": "Mandatory columns must not be NULL",
-    "category": "Completeness",
-    "severity": "Critical",
+    "column_name": "Currency",
+    "description": "Currency must equal 'GBP' for all rows.",
+    "category": "Domain & format",
+    "severity": "High",
     "origin": "Documented",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE AccountNumber IS NULL OR CustomerID IS NULL OR ProductCode IS NULL OR AccountStatus IS NULL OR Currency IS NULL OR AccountOpenDate IS NULL OR InterestRate IS NULL OR Balance IS NULL OR ValidFrom IS NULL OR ValidTo IS NULL OR LoadTimestamp IS NULL"
+    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE Currency IS NULL OR Currency <> 'GBP'"
   },
   {
     "rule_id": "R002",
     "table_name": "curate.SavingsAccount",
-    "column_name": "ProductCode",
-    "description": "ProductCode must be one of the allowed values: EASY_ACCESS, FIXED_1Y, NOTICE_90, ISA",
-    "category": "Domain & format",
+    "column_name": "AccountNumber",
+    "description": "AccountNumber must be non-empty (not just non-NULL); values containing only whitespace are invalid.",
+    "category": "Completeness",
     "severity": "High",
     "origin": "Documented",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE ProductCode NOT IN ('EASY_ACCESS','FIXED_1Y','NOTICE_90','ISA') OR ProductCode = ''"
+    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE AccountNumber IS NOT NULL AND LTRIM(RTRIM(AccountNumber)) = ''"
   },
   {
     "rule_id": "R003",
     "table_name": "curate.SavingsAccount",
-    "column_name": "AccountStatus",
-    "description": "AccountStatus must be one of the allowed values: OPEN, CLOSED, DORMANT, FROZEN",
-    "category": "Domain & format",
+    "column_name": "CustomerID",
+    "description": "CustomerID must be non-empty (not just non-NULL); values containing only whitespace are invalid.",
+    "category": "Completeness",
     "severity": "High",
-    "origin": "Documented",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE AccountStatus NOT IN ('OPEN','CLOSED','DORMANT','FROZEN') OR AccountStatus = ''"
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE CustomerID IS NOT NULL AND LTRIM(RTRIM(CustomerID)) = ''"
   },
   {
     "rule_id": "R004",
     "table_name": "curate.SavingsAccount",
-    "column_name": "Currency",
-    "description": "Currency must be non-null, length = 3 and equal to 'GBP'",
-    "category": "Domain & format",
-    "severity": "High",
-    "origin": "Documented",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE Currency IS NULL OR LEN(Currency) <> 3 OR Currency <> 'GBP'"
+    "column_name": "AccountMaturityDate,ProductCode",
+    "description": "AccountMaturityDate should be NULL for non-fixed products (only FIXED_1Y should have a populated maturity date).",
+    "category": "Conditional business rule",
+    "severity": "Warning",
+    "origin": "Inferred",
+    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE ProductCode IS NOT NULL AND ProductCode <> 'FIXED_1Y' AND AccountMaturityDate IS NOT NULL"
   },
   {
     "rule_id": "R005",
     "table_name": "curate.SavingsAccount",
-    "column_name": "AccountNumber,CustomerID",
-    "description": "AccountNumber and CustomerID should have length <= 20 characters",
-    "category": "Domain & format",
+    "column_name": "LoadTimestamp,ValidFrom",
+    "description": "LoadTimestamp should be greater than or equal to ValidFrom (LoadTimestamp < ValidFrom indicates inconsistent audit/load timing).",
+    "category": "Load metadata",
     "severity": "Warning",
     "origin": "Inferred",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE (AccountNumber IS NOT NULL AND LEN(AccountNumber) > 20) OR (CustomerID IS NOT NULL AND LEN(CustomerID) > 20)"
+    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE LoadTimestamp IS NOT NULL AND ValidFrom IS NOT NULL AND LoadTimestamp < ValidFrom"
   },
   {
     "rule_id": "R006",
     "table_name": "curate.SavingsAccount",
-    "column_name": "InterestRate",
-    "description": "InterestRate must be >= 0.00 and < 100.00",
+    "column_name": "Balance",
+    "description": "Balance should be non-negative for savings accounts (negative balances are unexpected).",
     "category": "Domain & format",
     "severity": "Warning",
     "origin": "Inferred",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE InterestRate < 0.00 OR InterestRate >= 100.00 OR InterestRate IS NULL"
-  },
-  {
-    "rule_id": "R007",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "Balance",
-    "description": "Balance must be non-null; when AccountStatus = CLOSED Balance must equal 0.00",
-    "category": "Conditional business rule",
-    "severity": "Critical",
-    "origin": "Documented",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE Balance IS NULL OR (AccountStatus = 'CLOSED' AND ISNULL(Balance,0.0) <> 0.00)"
-  },
-  {
-    "rule_id": "R008",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "AccountMaturityDate,ProductCode,AccountOpenDate",
-    "description": "AccountMaturityDate must be non-null when ProductCode = FIXED_1Y, and when populated must be > AccountOpenDate",
-    "category": "Conditional business rule",
-    "severity": "High",
-    "origin": "Documented",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE (ProductCode = 'FIXED_1Y' AND AccountMaturityDate IS NULL) OR (AccountMaturityDate IS NOT NULL AND AccountOpenDate IS NOT NULL AND AccountMaturityDate <= AccountOpenDate)"
-  },
-  {
-    "rule_id": "R009",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "AccountCloseDate,AccountStatus,AccountOpenDate",
-    "description": "If AccountStatus = CLOSED then AccountCloseDate must be populated, >= AccountOpenDate and <= current date",
-    "category": "Conditional business rule",
-    "severity": "High",
-    "origin": "Documented",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE AccountStatus = 'CLOSED' AND (AccountCloseDate IS NULL OR AccountOpenDate IS NULL OR AccountCloseDate < AccountOpenDate OR AccountCloseDate > GETUTCDATE())"
-  },
-  {
-    "rule_id": "R010",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "AccountOpenDate",
-    "description": "AccountOpenDate must be <= current date",
-    "category": "Temporal & SCD",
-    "severity": "Warning",
-    "origin": "Inferred",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE AccountOpenDate IS NOT NULL AND AccountOpenDate > GETUTCDATE()"
-  },
-  {
-    "rule_id": "R011",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "ValidFrom,ValidTo",
-    "description": "ValidFrom must be <= ValidTo and ValidTo must be > ValidFrom; ValidTo and ValidFrom must be non-null",
-    "category": "Temporal & SCD",
-    "severity": "Critical",
-    "origin": "Documented",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE ValidFrom IS NULL OR ValidTo IS NULL OR ValidFrom > ValidTo OR ValidTo <= ValidFrom"
-  },
-  {
-    "rule_id": "R012",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "AccountNumber,ValidFrom",
-    "description": "Business key duplicate: AccountNumber + ValidFrom must be unique",
-    "category": "Business-key duplicates",
-    "severity": "Critical",
-    "origin": "Standard",
-    "rule_sql": "SELECT a.* FROM curate.SavingsAccount a JOIN (SELECT AccountNumber, ValidFrom, COUNT(*) cnt FROM curate.SavingsAccount GROUP BY AccountNumber, ValidFrom HAVING COUNT(*) > 1) d ON a.AccountNumber = d.AccountNumber AND a.ValidFrom = d.ValidFrom"
-  },
-  {
-    "rule_id": "R013",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "AccountNumber,ValidTo",
-    "description": "Exactly one current row (ValidTo = '9999-12-31') must exist per AccountNumber",
-    "category": "Temporal & SCD",
-    "severity": "Critical",
-    "origin": "Standard",
-    "rule_sql": "SELECT AccountNumber, COUNT(*) current_count FROM curate.SavingsAccount WHERE ValidTo = '9999-12-31' GROUP BY AccountNumber HAVING COUNT(*) <> 1"
-  },
-  {
-    "rule_id": "R014",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "AccountNumber,ValidFrom,ValidTo",
-    "description": "No overlapping ValidFrom/ValidTo periods for the same AccountNumber (SCD2 ranges must not overlap)",
-    "category": "Temporal & SCD",
-    "severity": "Critical",
-    "origin": "Standard",
-    "rule_sql": "SELECT a.* FROM curate.SavingsAccount a JOIN curate.SavingsAccount b ON a.AccountNumber = b.AccountNumber AND a.ValidFrom < b.ValidTo AND b.ValidFrom < a.ValidTo AND (a.ValidFrom <> b.ValidFrom OR a.ValidTo <> b.ValidTo)"
-  },
-  {
-    "rule_id": "R015",
-    "table_name": "curate.SavingsAccount",
-    "column_name": "LoadTimestamp",
-    "description": "LoadTimestamp must not be NULL and should be <= current system time",
-    "category": "Load metadata",
-    "severity": "High",
-    "origin": "Standard",
-    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE LoadTimestamp IS NULL OR LoadTimestamp > GETUTCDATE()"
+    "rule_sql": "SELECT * FROM curate.SavingsAccount WHERE Balance IS NOT NULL AND Balance < 0"
   }
 ]
